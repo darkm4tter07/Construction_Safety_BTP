@@ -1,189 +1,269 @@
-import numpy as np
 import math
 
 class ErgonomicAnalyzer:
     """
-    RULA (Rapid Upper Limb Assessment) and REBA (Rapid Entire Body Assessment)
-    for construction worker posture analysis
+    Analyzes posture using RULA (Rapid Upper Limb Assessment) 
+    and REBA (Rapid Entire Body Assessment) scores.
     """
     
     def __init__(self):
-        self.joint_connections = [
-            (11, 13), (13, 15),  # Left arm
-            (12, 14), (14, 16),  # Right arm
-            (11, 12),            # Shoulders
-            (11, 23), (12, 24),  # Torso
-            (23, 25), (25, 27),  # Left leg
-            (24, 26), (26, 28),  # Right leg
-        ]
-    
-    def calculate_angle(self, p1, p2, p3):
-        """Calculate angle between three points"""
-        v1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
-        v2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
-        
-        cos_angle = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-6)
-        angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
-        return math.degrees(angle)
-    
-    def calculate_rula_score(self, landmarks):
-        """
-        Calculate RULA score (1-7 scale)
-        Based on upper body posture analysis
-        """
-        if not landmarks or len(landmarks) < 33:
-            return None, "Insufficient landmarks"
-        
-        # Extract key points (MediaPipe pose landmarks)
-        left_shoulder = landmarks[11]
-        right_shoulder = landmarks[12]
-        left_elbow = landmarks[13]
-        right_elbow = landmarks[14]
-        left_wrist = landmarks[15]
-        right_wrist = landmarks[16]
-        
-        # Upper Arm Score (1-6)
-        # Calculate shoulder flexion/extension
-        left_arm_angle = self.calculate_angle(
-            [left_shoulder['x'], left_shoulder['y']],
-            [left_elbow['x'], left_elbow['y']],
-            [left_wrist['x'], left_wrist['y']]
-        )
-        
-        upper_arm_score = 1
-        if left_arm_angle < 20:
-            upper_arm_score = 2
-        elif left_arm_angle < 45:
-            upper_arm_score = 3
-        elif left_arm_angle < 90:
-            upper_arm_score = 4
-        else:
-            upper_arm_score = 5
-        
-        # Lower Arm Score (1-3)
-        lower_arm_score = 1
-        if 60 < left_arm_angle < 100:
-            lower_arm_score = 1
-        else:
-            lower_arm_score = 2
-        
-        # Wrist Score (1-4)
-        wrist_score = 2  # Neutral position
-        
-        # Neck Score (1-6)
-        nose = landmarks[0]
-        neck = landmarks[11]  # Approximation
-        neck_angle = abs(nose['y'] - neck['y'])
-        
-        neck_score = 1
-        if neck_angle > 0.2:
-            neck_score = 3
-        elif neck_angle > 0.1:
-            neck_score = 2
-        
-        # Trunk Score (1-6)
-        hip_center = {
-            'x': (landmarks[23]['x'] + landmarks[24]['x']) / 2,
-            'y': (landmarks[23]['y'] + landmarks[24]['y']) / 2
-        }
-        shoulder_center = {
-            'x': (left_shoulder['x'] + right_shoulder['x']) / 2,
-            'y': (left_shoulder['y'] + right_shoulder['y']) / 2
-        }
-        
-        trunk_angle = abs(shoulder_center['y'] - hip_center['y'])
-        trunk_score = 2 if trunk_angle > 0.15 else 1
-        
-        # Calculate final RULA score (simplified)
-        rula_score = (upper_arm_score + lower_arm_score + wrist_score + 
-                      neck_score + trunk_score) / 5
-        
-        # Normalize to 1-7 scale
-        final_score = min(7, max(1, int(rula_score * 2)))
-        
-        risk_level = self._get_risk_level(final_score)
-        
-        return final_score, risk_level
-    
-    def calculate_reba_score(self, landmarks):
-        """
-        Calculate REBA score (1-15 scale)
-        Includes full body assessment
-        """
-        if not landmarks or len(landmarks) < 33:
-            return None, "Insufficient landmarks"
-        
-        # Extract key points
-        left_hip = landmarks[23]
-        right_hip = landmarks[24]
-        left_knee = landmarks[25]
-        right_knee = landmarks[26]
-        left_ankle = landmarks[27]
-        right_ankle = landmarks[28]
-        
-        # Leg score (1-4)
-        left_leg_angle = self.calculate_angle(
-            [left_hip['x'], left_hip['y']],
-            [left_knee['x'], left_knee['y']],
-            [left_ankle['x'], left_ankle['y']]
-        )
-        
-        leg_score = 1
-        if left_leg_angle < 30:
-            leg_score = 2
-        elif left_leg_angle < 60:
-            leg_score = 3
-        else:
-            leg_score = 4
-        
-        # Get RULA components
-        rula_score, _ = self.calculate_rula_score(landmarks)
-        if rula_score is None:
-            return None, "Cannot calculate REBA"
-        
-        # Combine for REBA (simplified calculation)
-        reba_score = min(15, max(1, int((rula_score * 1.5 + leg_score) / 2 * 3)))
-        
-        risk_level = self._get_reba_risk_level(reba_score)
-        
-        return reba_score, risk_level
-    
-    def _get_risk_level(self, rula_score):
-        """Get risk level from RULA score"""
-        if rula_score <= 2:
-            return "Acceptable"
-        elif rula_score <= 4:
-            return "Investigate Further"
-        elif rula_score <= 6:
-            return "Investigate and Change Soon"
-        else:
-            return "Investigate and Change Immediately"
-    
-    def _get_reba_risk_level(self, reba_score):
-        """Get risk level from REBA score"""
-        if reba_score == 1:
-            return "Negligible Risk"
-        elif reba_score <= 3:
-            return "Low Risk"
-        elif reba_score <= 7:
-            return "Medium Risk"
-        elif reba_score <= 10:
-            return "High Risk"
-        else:
-            return "Very High Risk"
-    
+        # MediaPipe landmark indices
+        self.NOSE = 0
+        self.LEFT_SHOULDER = 11
+        self.RIGHT_SHOULDER = 12
+        self.LEFT_ELBOW = 13
+        self.RIGHT_ELBOW = 14
+        self.LEFT_WRIST = 15
+        self.RIGHT_WRIST = 16
+        self.LEFT_HIP = 23
+        self.RIGHT_HIP = 24
+        self.LEFT_KNEE = 25
+        self.RIGHT_KNEE = 26
+        self.LEFT_ANKLE = 27
+        self.RIGHT_ANKLE = 28
+
     def analyze_posture(self, landmarks):
-        """Complete posture analysis"""
-        rula_score, rula_risk = self.calculate_rula_score(landmarks)
-        reba_score, reba_risk = self.calculate_reba_score(landmarks)
+        """
+        Main function to analyze posture and return RULA/REBA scores.
         
-        return {
-            "rula": {
-                "score": rula_score,
-                "risk_level": rula_risk
-            },
-            "reba": {
-                "score": reba_score,
-                "risk_level": reba_risk
+        Args:
+            landmarks: List of dicts with keys 'x', 'y', 'z', 'visibility'
+        
+        Returns:
+            dict with 'rula' and 'reba' scores
+        """
+        if not landmarks or len(landmarks) < 33:
+            return None
+        
+        try:
+            rula_score = self._calculate_rula(landmarks)
+            reba_score = self._calculate_reba(landmarks)
+            
+            return {
+                "rula": {
+                    "score": rula_score,
+                    "risk": self._get_rula_risk(rula_score)
+                },
+                "reba": {
+                    "score": reba_score,
+                    "risk": self._get_reba_risk(reba_score)
+                }
             }
-        }
+        except Exception as e:
+            print(f"Error in posture analysis: {e}")
+            return None
+
+    def _calculate_rula(self, landmarks):
+        """
+        Simplified RULA score calculation (1-7 scale)
+        Focuses on upper body: arms, wrists, neck
+        """
+        # Upper arm angle (shoulder to elbow)
+        upper_arm_score = self._score_upper_arm(landmarks)
+        
+        # Lower arm angle (elbow to wrist)
+        lower_arm_score = self._score_lower_arm(landmarks)
+        
+        # Wrist position
+        wrist_score = self._score_wrist(landmarks)
+        
+        # Neck position
+        neck_score = self._score_neck(landmarks)
+        
+        # Combine scores (simplified RULA table)
+        # In real RULA, you'd use lookup tables
+        posture_score = (upper_arm_score + lower_arm_score + wrist_score + neck_score) / 4
+        
+        # Map to 1-7 scale
+        rula_score = min(7, max(1, int(posture_score * 2)))
+        return rula_score
+
+    def _calculate_reba(self, landmarks):
+        """
+        Simplified REBA score calculation (1-15 scale)
+        Focuses on whole body: trunk, neck, legs
+        """
+        # Trunk (torso) posture
+        trunk_score = self._score_trunk(landmarks)
+        
+        # Neck posture
+        neck_score = self._score_neck(landmarks)
+        
+        # Leg posture
+        leg_score = self._score_legs(landmarks)
+        
+        # Upper limb score
+        upper_limb_score = (self._score_upper_arm(landmarks) + self._score_lower_arm(landmarks)) / 2
+        
+        # Combine scores (simplified REBA table)
+        posture_score = (trunk_score * 1.5 + neck_score + leg_score + upper_limb_score) / 4
+        
+        # Map to 1-15 scale
+        reba_score = min(15, max(1, int(posture_score * 3)))
+        return reba_score
+
+    # ============ SCORING FUNCTIONS ============
+    
+    def _score_upper_arm(self, landmarks):
+        """Score upper arm position (1-4)"""
+        left_shoulder = landmarks[self.LEFT_SHOULDER]
+        left_elbow = landmarks[self.LEFT_ELBOW]
+        
+        # Calculate angle from vertical
+        angle = self._calculate_angle_vertical(left_shoulder, left_elbow)
+        
+        if angle < 20:
+            return 1
+        elif angle < 45:
+            return 2
+        elif angle < 90:
+            return 3
+        else:
+            return 4
+
+    def _score_lower_arm(self, landmarks):
+        """Score lower arm position (1-3)"""
+        left_elbow = landmarks[self.LEFT_ELBOW]
+        left_wrist = landmarks[self.LEFT_WRIST]
+        left_shoulder = landmarks[self.LEFT_SHOULDER]
+        
+        # Calculate elbow angle
+        angle = self._calculate_joint_angle(left_shoulder, left_elbow, left_wrist)
+        
+        if 60 <= angle <= 100:
+            return 1  # Good position
+        elif angle < 60 or angle > 120:
+            return 3  # Extreme position
+        else:
+            return 2  # Moderate
+
+    def _score_wrist(self, landmarks):
+        """Score wrist position (1-3)"""
+        wrist = landmarks[self.LEFT_WRIST]
+        elbow = landmarks[self.LEFT_ELBOW]
+        
+        # Check if wrist is bent (deviation from elbow-wrist line)
+        deviation = abs(wrist['y'] - elbow['y']) * 100
+        
+        if deviation < 5:
+            return 1  # Neutral
+        elif deviation < 15:
+            return 2  # Moderate bend
+        else:
+            return 3  # Extreme bend
+
+    def _score_neck(self, landmarks):
+        """Score neck position (1-4)"""
+        nose = landmarks[self.NOSE]
+        left_shoulder = landmarks[self.LEFT_SHOULDER]
+        right_shoulder = landmarks[self.RIGHT_SHOULDER]
+        
+        # Calculate neck forward lean
+        shoulder_mid_y = (left_shoulder['y'] + right_shoulder['y']) / 2
+        neck_forward = (nose['y'] - shoulder_mid_y) * 100
+        
+        if abs(neck_forward) < 10:
+            return 1  # Upright
+        elif abs(neck_forward) < 20:
+            return 2  # Slight bend
+        elif abs(neck_forward) < 40:
+            return 3  # Moderate bend
+        else:
+            return 4  # Extreme bend
+
+    def _score_trunk(self, landmarks):
+        """Score trunk/torso position (1-5)"""
+        left_shoulder = landmarks[self.LEFT_SHOULDER]
+        left_hip = landmarks[self.LEFT_HIP]
+        
+        # Calculate trunk lean from vertical
+        angle = self._calculate_angle_vertical(left_hip, left_shoulder)
+        
+        if angle < 5:
+            return 1  # Upright
+        elif angle < 20:
+            return 2  # Slight bend
+        elif angle < 60:
+            return 3  # Moderate bend
+        elif angle < 90:
+            return 4  # Severe bend
+        else:
+            return 5  # Extreme bend
+
+    def _score_legs(self, landmarks):
+        """Score leg position (1-4)"""
+        left_hip = landmarks[self.LEFT_HIP]
+        left_knee = landmarks[self.LEFT_KNEE]
+        left_ankle = landmarks[self.LEFT_ANKLE]
+        
+        # Calculate knee angle
+        angle = self._calculate_joint_angle(left_hip, left_knee, left_ankle)
+        
+        # Check if legs are bent (sitting/kneeling)
+        if angle > 150:
+            return 1  # Standing straight
+        elif angle > 90:
+            return 2  # Slightly bent
+        elif angle > 60:
+            return 3  # Sitting/kneeling
+        else:
+            return 4  # Extreme position
+
+    # ============ HELPER FUNCTIONS ============
+    
+    def _calculate_angle_vertical(self, point1, point2):
+        """Calculate angle from vertical (in degrees)"""
+        dx = point2['x'] - point1['x']
+        dy = point2['y'] - point1['y']
+        angle = abs(math.degrees(math.atan2(dx, dy)))
+        return angle
+
+    def _calculate_joint_angle(self, point1, point2, point3):
+        """Calculate angle at point2 formed by point1-point2-point3"""
+        # Vector from point2 to point1
+        v1x = point1['x'] - point2['x']
+        v1y = point1['y'] - point2['y']
+        
+        # Vector from point2 to point3
+        v2x = point3['x'] - point2['x']
+        v2y = point3['y'] - point2['y']
+        
+        # Calculate angle using dot product
+        dot = v1x * v2x + v1y * v2y
+        mag1 = math.sqrt(v1x**2 + v1y**2)
+        mag2 = math.sqrt(v2x**2 + v2y**2)
+        
+        if mag1 == 0 or mag2 == 0:
+            return 0
+        
+        cos_angle = dot / (mag1 * mag2)
+        cos_angle = max(-1, min(1, cos_angle))  # Clamp to [-1, 1]
+        angle = math.degrees(math.acos(cos_angle))
+        
+        return angle
+
+    # ============ RISK LEVEL FUNCTIONS ============
+    
+    def _get_rula_risk(self, score):
+        """Get risk level for RULA score"""
+        if score <= 2:
+            return "Acceptable"
+        elif score <= 4:
+            return "Investigate"
+        elif score <= 6:
+            return "Investigate Soon"
+        else:
+            return "Investigate Now"
+
+    def _get_reba_risk(self, score):
+        """Get risk level for REBA score"""
+        if score <= 3:
+            return "Negligible"
+        elif score <= 7:
+            return "Low"
+        elif score <= 10:
+            return "Medium"
+        elif score <= 14:
+            return "High"
+        else:
+            return "Very High"

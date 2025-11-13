@@ -9,3 +9,9 @@ python-socketio==5.10.0
 aiofiles==23.2.1
 Pillow==10.1.0
 pydantic-settings==2.1.0
+
+# --- PyTorch GPU (CUDA 12.1) build ---
+# Install with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+torch==2.8.0+cu121
+torchvision==0.23.0+cu121
+torchaudio==2.8.0+cu121

@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+/* Fullscreen, no scrollbars */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* hard stop */
+}
