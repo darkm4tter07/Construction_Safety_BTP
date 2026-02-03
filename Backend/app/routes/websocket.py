@@ -1,7 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import base64, json, cv2, numpy as np
 import traceback
-import asyncio
 from app.services.websocket_manager import ConnectionManager
 from app.models import safety_monitor
 

@@ -9,9 +9,26 @@ python-socketio==5.10.0
 aiofiles==23.2.1
 Pillow==10.1.0
 pydantic-settings==2.1.0
+pydantic[email]==2.5.0
+email-validator==2.1.0
 
 # --- PyTorch GPU (CUDA 12.1) build ---
 # Install with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 torch==2.8.0+cu121
 torchvision==0.23.0+cu121
 torchaudio==2.8.0+cu121
+
+# --- Google Fit Integration ---
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.116.0
+
+# Database & Authentication
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+alembic==1.13.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+cryptography==41.0.7

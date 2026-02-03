@@ -6,8 +6,25 @@ import RulaRebaPanel from "../components/AnalysisPanels/RulaRebaPanel";
 import WeatherPanel from "../components/AnalysisPanels/WeatherPanel";
 import RiskLegend from "../components/AnalysisPanels/RiskLegend";
 import Controls from "../components/Controls";
+import FitnessPanel from "../components/AnalysisPanels/FitnessPanel";
+import { useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function Dashboard() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Handle token from URL
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      login(token);
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [searchParams, login, navigate]);
+
   return (
     <div className="w-screen h-screen flex flex-col bg-gray-900 text-white">
       {/* Header (8vh) */}
@@ -40,7 +57,8 @@ export default function Dashboard() {
           </div>
           
           <div className="flex-none">
-            <RiskLegend />
+            {/* <RiskLegend /> */}
+            <FitnessPanel/>
           </div>
         </div>
       </div>
