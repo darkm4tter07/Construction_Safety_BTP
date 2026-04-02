@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+import Header from '../components/Header';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -43,9 +44,10 @@ const Login = () => {
 
   return (
     <div className='bg-black min-h-screen w-full flex flex-col'>
-        <h1 className='w-full text-white opacity-85 text-3xl text-center py-4 font-bold border-b-2 border-[#ffffff31]'>
+        {/* <h1 className='w-full text-white opacity-85 text-3xl text-center py-4 font-bold border-b-2 border-[#ffffff31]'>
             Construction Safety Monitor
-        </h1>
+        </h1> */}
+        <Header/>
         <div className='flex-1 flex flex-col justify-center items-center text-white px-4 text-center'>
             <h1 className='text-5xl font-bold pb-6'>
                 Login to your Account

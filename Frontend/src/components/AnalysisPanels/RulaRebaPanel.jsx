@@ -7,77 +7,100 @@ export default function RulaRebaPanel() {
   const { isStreaming } = useCamera();
   const posture = lastResult?.posture;
 
-  if (!isStreaming) {
+  const ScoreBar = ({ label, score, max, riskLevel }) => {
+    const pct = ((score || 0) / max) * 100;
+    const color = score <= max * 0.33
+      ? "bg-green-500"
+      : score <= max * 0.66
+      ? "bg-yellow-500"
+      : "bg-red-500";
+
     return (
-      <div className="w-full h-full bg-gray-800 rounded-xl shadow-xl overflow-hidden flex flex-col">
-        <div className="px-4 py-2 border-b border-white/10 font-semibold flex items-center justify-between">
-          <span>Ergonomic Analysis</span>
-          <span className="text-red-500">Camera Not Active</span>
+      <div className="py-2.5 border-b border-zinc-700 last:border-0">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-zinc-300">{label}</span>
+          <div className="flex items-center gap-2">
+            {riskLevel && (
+              <span className="text-[10px] text-zinc-400 capitalize">{riskLevel}</span>
+            )}
+            <span className="text-xs font-bold text-white tabular-nums">
+              {score ?? "-"}<span className="text-zinc-500 font-normal">/{max}</span>
+            </span>
+          </div>
         </div>
-        <div className="p-3 flex-1 overflow-auto text-neutral-500 text-sm">
-          Here you will see ergonomic analysis once the camera is active.
+        <div className="w-full bg-zinc-700 rounded-full h-1">
+          <div
+            className={`${color} h-1 rounded-full transition-all duration-500`}
+            style={{ width: `${pct}%` }}
+          />
         </div>
       </div>
     );
-  }
-
-  const Block = ({ label, score, max, riskLevel }) => (
-    <div className="bg-gray-700/70 rounded-md p-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-medium">{label}</span>
-        <span className={`px-2 py-0.5 rounded text-xs ${riskColor(score, max).bg}`}>
-          {score ?? "-"}
-        </span>
-      </div>
-      <div className="w-full bg-gray-600 rounded h-1 mb-2">
-        <div 
-          className={`${riskColor(score, max).bg} h-1 rounded`} 
-          style={{ width: `${((score || 0) / max) * 100}%` }} 
-        />
-      </div>
-      {riskLevel && (
-        <div className="text-xs text-white/60">{riskLevel}</div>
-      )}
-    </div>
-  );
+  };
 
   return (
-    <div className="w-full h-full bg-gray-800 rounded-xl shadow-xl overflow-hidden">
-      <div className="px-4 py-2 border-b border-white/10 font-semibold">
-        Ergonomic Analysis
+    <div className="w-[320px] lg:w-[350px] shrink-0 h-full bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">
+
+      {/* Header */}
+      <div className="px-4 py-2.5 border-b border-zinc-700 bg-zinc-700/30 flex justify-between items-center shrink-0">
+        <span className="text-xs font-semibold tracking-widest text-zinc-300 uppercase">
+          Ergonomic Analysis
+        </span>
+        {!isStreaming && (
+          <span className="text-[10px] text-red-400/70 tracking-wide">camera off</span>
+        )}
+        {isStreaming && posture && (
+          <span className="text-[10px] text-green-400 tracking-wide">pose detected</span>
+        )}
       </div>
-      <div className="p-3 h-[calc(100%-40px)] overflow-auto">
-        {posture ? (
-          <div className="space-y-3">
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {!isStreaming ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-xs text-zinc-400 text-center px-6">
+              Ergonomic analysis will appear once the camera is active
+            </p>
+          </div>
+        ) : !posture ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center px-6 space-y-2">
+              <p className="text-xs text-zinc-400">No posture detected</p>
+              <div className="text-[10px] text-zinc-500 space-y-1">
+                <p>Ensure person is fully visible</p>
+                <p>Stand facing the camera</p>
+                <p>Ensure good lighting</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="px-4 py-1">
             {posture.rula && (
-              <Block 
-                label="RULA" 
-                score={posture.rula.score} 
-                max={7} 
+              <ScoreBar
+                label="RULA"
+                score={posture.rula.score}
+                max={7}
                 riskLevel={posture.rula.risk_level}
               />
             )}
             {posture.reba && (
-              <Block 
-                label="REBA" 
-                score={posture.reba.score} 
-                max={15} 
+              <ScoreBar
+                label="REBA"
+                score={posture.reba.score}
+                max={15}
                 riskLevel={posture.reba.risk_level}
               />
             )}
           </div>
-        ) : (
-          <div className="text-white/40 text-sm">
-            <div className="mb-2">No posture detected</div>
-            <div className="text-xs text-white/30">
-              • Ensure person is fully visible in frame
-              <br />
-              • Stand facing the camera
-              <br />
-              • Ensure good lighting
-            </div>
-          </div>
         )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-2 border-t border-zinc-700 flex items-center gap-1.5 shrink-0">
+        <span className={`w-1.5 h-1.5 rounded-full ${isStreaming && posture ? "bg-green-500" : "bg-zinc-600"}`} />
+        <span className="text-[10px] text-zinc-400">
+          {isStreaming && posture ? "Analyzing posture" : "Awaiting pose data"}
+        </span>
       </div>
     </div>
   );

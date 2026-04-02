@@ -20,24 +20,29 @@ export function useWeather() {
           throw new Error("Invalid response structure");
         }
 
-        // Extract latest forecast (index 0)
         const latest = w.list[0];
         const temp = latest.main.temp;
         const wind = latest.wind.speed;
         const description = latest.weather[0].description;
+        const humidity = latest.main.humidity;                          // % (0-100)
+        const visibility = Math.round((latest.visibility ?? 10000) / 1000); // meters → km
 
-        // Apply safety rules
+        // Safety rules
         const unsafeHeat = temp >= 38;
         const unsafeCold = temp <= 4;
-        const unsafeWind = wind >= 35; // km/h
-        const unsafeDesc = /thunder|storm|dust|heavy rain|hail/i.test(description || "");
+        const unsafeWind = wind >= 35;
+        const unsafeDesc = /thunder|storm|dust|rain|hail/i.test(description || "");
+        const unsafeHumidity = humidity >= 90;                          // very high humidity
+        const unsafeVisibility = visibility <= 1;                       // less than 1km visibility
 
         setData({
           city: w.city.name,
           temp,
           wind,
           description,
-          safe: !(unsafeHeat || unsafeCold || unsafeWind || unsafeDesc),
+          humidity,
+          visibility,
+          safe: !(unsafeHeat || unsafeCold || unsafeWind || unsafeDesc || unsafeHumidity || unsafeVisibility),
           timestamp: latest.dt_txt
         });
         setError("");
@@ -61,7 +66,6 @@ export function useWeather() {
           const { latitude, longitude } = coords;
           fetchWeather(latitude, longitude);
 
-          // refresh every 2 minutes
           if (!intervalRef.current) {
             intervalRef.current = setInterval(() => {
               fetchWeather(latitude, longitude);

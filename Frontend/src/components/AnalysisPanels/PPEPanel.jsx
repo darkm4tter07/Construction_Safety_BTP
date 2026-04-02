@@ -1,175 +1,136 @@
 import { useCamera } from "../../hooks/useCamera";
 import { useWebSocket } from "../../hooks/useWebSocket";
-import { Shield, AlertTriangle } from "lucide-react";
-
-// Define expected PPE items based on YOLO class IDs
-// Your model detects both positive (wearing PPE) and negative (not wearing PPE) classes
-const EXPECTED_PPE = {
-  0: { name: "Hardhat", required: true, type: "positive" },
-  1: { name: "Mask", required: true, type: "positive" },
-  7: { name: "Safety Vest", required: true, type: "positive" },
-  // Negative detections (NO-PPE) - these indicate violations
-  2: { name: "NO-Hardhat", required: false, type: "negative", violationType: "Missing Hardhat" },
-  3: { name: "NO-Mask", required: false, type: "negative", violationType: "Missing Mask" },
-  4: { name: "NO-Safety Vest", required: false, type: "negative", violationType: "Missing Safety Vest" },
-  // Other detections (informational)
-  5: { name: "Person", required: false, type: "info" },
-  6: { name: "Safety Cone", required: false, type: "info" },
-  8: { name: "Machinery", required: false, type: "info" },
-  9: { name: "Utility Pole", required: false, type: "info" },
-  10: { name: "Vehicle", required: false, type: "info" },
-};
+import { Users } from "lucide-react";
+import { getDetectionCounts, CLASS_IDS } from "../../utils/detectionUtils";
 
 export default function PPEPanel() {
-  const {lastResult } = useWebSocket();
-  const {isStreaming} = useCamera()
+  const { lastResult } = useWebSocket();
+  const { isStreaming } = useCamera();
+
   const detections = lastResult?.detections ?? [];
-  // Create a map of detected class IDs
-  const detectedClassIds = new Set(detections.map(d => d.class_id));
+  const counts = getDetectionCounts(detections);
 
-  // Filter only PPE-related items (positive detections and negative detections)
-  const ppeItems = Object.entries(EXPECTED_PPE).filter(([_, info]) => 
-    info.type === "positive" || info.type === "negative"
-  );
+  const OTHER_CLASSES = {
+    [CLASS_IDS.SAFETY_CONE]: "Safety Cone",
+    [CLASS_IDS.MACHINERY]: "Machinery",
+    [CLASS_IDS.UTILITY_POLE]: "Utility Pole",
+    [CLASS_IDS.VEHICLE]: "Vehicle",
+  };
 
-  // Build status for each PPE item
-  const ppeStatus = ppeItems.map(([classId, info]) => {
-    const id = parseInt(classId);
-    const detection = detections.find(d => d.class_id === id);
-    
-    // For positive PPE items
-    if (info.type === "positive") {
-      return {
-        classId: id,
-        name: info.name,
-        required: info.required,
-        detected: detectedClassIds.has(id),
-        detection: detection,
-        isViolation: false,
-      };
-    } 
-    // For negative items (NO-PPE detections)
-    else {
-      return {
-        classId: id,
-        name: info.violationType || info.name,
-        required: true, // Treat as required since it's a violation
-        detected: !detectedClassIds.has(id), // Inverted logic: good if NOT detected
-        detection: detection,
-        isViolation: detectedClassIds.has(id), // It's a violation if detected
-      };
-    }
-  });
+  const otherDetections = Object.entries(OTHER_CLASSES)
+    .map(([id, name]) => {
+      const count = detections.filter(d => d.class_id === Number(id)).length;
+      return count > 0 ? { name, count } : null;
+    })
+    .filter(Boolean);
 
-  const detectedCount = ppeStatus.filter(p => p.detected && p.required).length;
-  const requiredCount = ppeStatus.filter(p => p.required).length;
-  const violationCount = ppeStatus.filter(p => p.isViolation).length;
-  if(!isStreaming) {
-    return(
-      <div className="w-full h-full bg-gray-800 rounded-xl shadow-xl overflow-hidden flex flex-col">
-        <div className="px-4 py-2 border-b border-white/10 font-semibold flex items-center justify-between">
-          <span>PPE Detection</span>
-          <span className="text-red-500">
-            Camera Not Active
-          </span>
-        </div>
-        <div className="p-3 flex-1 overflow-auto text-neutral-500 text-sm">
-            Here you will see PPE detection status once the camera is active.
-          </div>
-      </div>
-    )
-  }
+  const compliance = counts.personCount > 0
+    ? Math.round(((counts.hardhatCount + counts.maskCount + counts.vestCount) / (counts.personCount * 3)) * 100)
+    : 0;
 
-  return (
-    <div className="w-full h-full bg-gray-800 rounded-xl shadow-xl overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="px-4 py-2 border-b border-white/10 font-semibold flex items-center justify-between">
-        <span>PPE Detection</span>
-        
-        <div className="flex gap-2">
-          {violationCount > 0 && (
-            <span className="text-xs px-2 py-1 rounded bg-red-600 animate-pulse">
-              ⚠️ {violationCount} Violation{violationCount > 1 ? 's' : ''}
+  const StatusRow = ({ label, count, expected }) => {
+    const ok = count >= expected && expected > 0;
+    const missing = Math.max(0, expected - count);
+    return (
+      <div className="flex items-center justify-between py-2.5 border-b border-zinc-700 last:border-0 group">
+        <span className="text-xs text-zinc-300 group-hover:text-white transition-colors">
+          {label}
+        </span>
+        <div className="flex items-center gap-2">
+          {!ok && missing > 0 && (
+            <span className="text-[10px] text-red-400/70">
+              -{missing}
             </span>
           )}
-          <span className={`text-xs px-2 py-1 rounded ${detectedCount === requiredCount && violationCount === 0 ? 'bg-green-600' : 'bg-red-600'}`}>
-            {detectedCount}/{requiredCount}
+          <span className={`text-xs font-semibold tabular-nums ${ok ? "text-green-400" : "text-red-400"}`}>
+            {count}/{expected}
           </span>
+          <span className={`w-1.5 h-1.5 rounded-full ${ok ? "bg-green-500" : "bg-red-500"}`} />
         </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full h-full bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">
+
+      {/* Header */}
+      <div className="px-4 py-2.5 border-b border-zinc-700 bg-zinc-700/30 flex justify-between items-center">
+        <span className="text-xs font-semibold tracking-widest text-zinc-300 uppercase">
+          PPE Compliance
+        </span>
+        {!isStreaming && (
+          <span className="text-[10px] text-red-400/70 tracking-wide">
+            camera off
+          </span>
+        )}
+        {isStreaming && counts.personCount > 0 && (
+          <span className={`text-[10px] font-semibold tracking-wide ${
+            compliance === 100 ? "text-green-400" : compliance >= 60 ? "text-yellow-400" : "text-red-400"
+          }`}>
+            {compliance}% compliant
+          </span>
+        )}
       </div>
 
       {/* Content */}
-      <div className="p-3 flex-1 overflow-auto">
-        {ppeStatus.length === 0 ? (
-          <div className="text-white/40 text-sm">No PPE configured</div>
+      <div className="flex-1 overflow-y-auto">
+        {!isStreaming ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-xs text-zinc-400 text-center px-6">
+              PPE status will appear once the camera is active
+            </p>
+          </div>
         ) : (
-          <div className="space-y-2">
-            {ppeStatus.map((item) => (
-              <div
-                key={item.classId}
-                className={`rounded-md p-3 border ${
-                  item.isViolation
-                    ? 'bg-red-900/40 border-red-500/50 animate-pulse'
-                    : item.detected
-                    ? 'bg-green-900/30 border-green-500/30'
-                    : item.required
-                    ? 'bg-red-900/30 border-red-500/30'
-                    : 'bg-gray-700/50 border-gray-600/30'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {item.isViolation ? (
-                      <AlertTriangle className="w-4 h-4 text-red-400 animate-pulse" />
-                    ) : item.detected ? (
-                      <Shield className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-red-400" />
-                    )}
-                    <span className="font-medium text-sm">{item.name}</span>
-                    {item.required && !item.isViolation && (
-                      <span className="text-xs text-white/50">(Required)</span>
-                    )}
-                  </div>
-                  
-                  <span
-                    className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                      item.isViolation 
-                        ? 'bg-red-600 text-white'
-                        : item.detected 
-                        ? 'bg-green-600' 
-                        : 'bg-red-600'
-                    }`}
-                  >
-                    {item.isViolation ? '⚠️ VIOLATION' : item.detected ? 'DETECTED' : 'MISSING'}
-                  </span>
-                </div>
+          <div className="p-4 space-y-3">
 
-                {/* Confidence bar (only if detection exists) */}
-                {item.detection && (
-                  <>
-                    <div className="flex justify-between text-xs text-white/60 mb-1">
-                      <span>Confidence</span>
-                      <span>{(item.detection.conf * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-600 rounded h-1.5">
-                      <div
-                        className={`h-1.5 rounded ${
-                          item.isViolation 
-                            ? 'bg-red-500'
-                            : item.detection.conf > 0.7 
-                            ? 'bg-green-500' 
-                            : 'bg-yellow-500'
-                        }`}
-                        style={{ width: `${item.detection.conf * 100}%` }}
-                      />
-                    </div>
-                  </>
-                )}
+            {/* Person Count */}
+            <div className="flex items-center justify-between py-2 border-b border-zinc-700">
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-zinc-400" />
+                <span className="text-xs text-zinc-300">persons detected</span>
               </div>
-            ))}
+              <span className="text-xs font-bold text-white tabular-nums">
+                {counts.personCount}
+              </span>
+            </div>
+
+            {/* PPE Rows */}
+            <div>
+              <StatusRow label="Hardhats" count={counts.hardhatCount} expected={counts.personCount} />
+              <StatusRow label="Masks" count={counts.maskCount} expected={counts.personCount} />
+              <StatusRow label="Safety Vests" count={counts.vestCount} expected={counts.personCount} />
+            </div>
+
+            {/* Other Detections */}
+            {otherDetections.length > 0 && (
+              <div className="pt-1">
+                <span className="text-[10px] text-zinc-400 uppercase tracking-widest">
+                  Other
+                </span>
+                <div className="mt-2 space-y-0">
+                  {otherDetections.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center py-2 border-b border-zinc-700 last:border-0"
+                    >
+                      <span className="text-xs text-zinc-400">{item.name}</span>
+                      <span className="text-xs font-medium text-zinc-300 tabular-nums">{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-2 border-t border-zinc-700 flex items-center gap-1.5">
+        <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? "bg-green-500" : "bg-zinc-600"}`} />
+        <span className="text-[10px] text-zinc-400">
+          {isStreaming ? `${detections.length} objects in frame` : "stream inactive"}
+        </span>
       </div>
     </div>
   );

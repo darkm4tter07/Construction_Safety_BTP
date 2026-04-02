@@ -1,22 +1,22 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import WorkerProfile from './pages/WorkerProfile';
 import Dashboard from './pages/Dashboard';
+import {useFrameSender} from './hooks/useFrameSender';
 import './App.css';
 
 function App() {
   const { isAuthenticated, user } = useAuth();
-
+  useFrameSender();
   return (
     <Router>
       <Routes>
         {/* Login Route */}
         <Route path="/login" element={<Login />} />
 
-        {/* Worker Profile */}
+        {/* Worker Self Profile */}
         <Route
           path="/worker/profile"
           element={
@@ -25,6 +25,18 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Admin Viewing Any Worker */}
+        <Route
+          path="/admin/worker/:id"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <WorkerProfile />
+            </ProtectedRoute>
+          }
+        />
+
+
 
         {/* Admin Dashboard */}
         <Route

@@ -76,8 +76,8 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
         # Update existing user's google_id and profile picture if missing
         if not user.google_id or user.google_id != google_id:
             user.google_id = google_id
-        if not user.profile_picture:
-            user.profile_picture = profile_picture
+        user.full_name = full_name
+        user.profile_picture = profile_picture
         db.commit()
         db.refresh(user)
     else:
