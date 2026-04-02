@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL } from '../Constant';
+import { AUTH_URL as API_URL } from '../Constant';
 
 export const useWorkerData = (user, id, isAdminView) => {
   const [fitnessData, setFitnessData] = useState(null);

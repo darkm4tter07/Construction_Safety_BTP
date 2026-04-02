@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import {API_URL} from "../../Constant.js"
+import { AUTH_URL as API_URL } from "../../Constant";
 
 export default function FitnessPanel() {
   const [workers, setWorkers] = useState([]);

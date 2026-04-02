@@ -20,7 +20,7 @@ function App() {
         <Route
           path="/worker/profile"
           element={
-            <ProtectedRoute requiredRole="worker">
+            <ProtectedRoute requiredRole="WORKER">
               <WorkerProfile />
             </ProtectedRoute>
           }
@@ -30,7 +30,7 @@ function App() {
         <Route
           path="/admin/worker/:id"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole="ADMIN">
               <WorkerProfile />
             </ProtectedRoute>
           }
@@ -42,7 +42,7 @@ function App() {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole="ADMIN">
               <Dashboard />
             </ProtectedRoute>
           }
@@ -53,7 +53,7 @@ function App() {
           path="/"
           element={
             isAuthenticated && user ? (
-              user.role === 'admin' ? (
+              user.role === 'ADMIN' ? (
                 <Navigate to="/admin/dashboard" replace />
               ) : (
                 <Navigate to="/worker/profile" replace />

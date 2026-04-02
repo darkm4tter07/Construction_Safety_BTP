@@ -12,7 +12,7 @@ const WorkerProfile = () => {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const isAdminView = user?.role === 'admin' && !!id;
+  const isAdminView = user?.role === 'ADMIN' && !!id;
 
   // Custom hook handles all data fetching logic
   const {

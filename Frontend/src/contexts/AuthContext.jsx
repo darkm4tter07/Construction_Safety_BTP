@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { AUTH_URL as API_URL } from '../Constant';
 
 const AuthContext = createContext(null);
 
@@ -7,8 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(window.localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
-
-  const API_URL = 'http://localhost:8000';
 
   // Configure axios defaults
   useEffect(() => {
@@ -57,8 +56,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     isAuthenticated: !!token,
-    isAdmin: user?.role === 'admin',
-    isWorker: user?.role === 'worker'
+    isAdmin: user?.role === 'ADMIN',
+    isWorker: user?.role === 'WORKER'
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,13 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import Header from '../components/Header';
+import { AUTH_URL as API_URL } from '../Constant';
 
 const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login, isAuthenticated, user } = useAuth();
-
-  const API_URL = 'http://localhost:8000';
 
   // Handle token from URL (after OAuth redirect)
   useEffect(() => {
@@ -23,7 +22,7 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === 'admin') {
+      if (user.role === 'ADMIN') {
         navigate('/admin/dashboard');
       } else {
         navigate('/worker/profile');
