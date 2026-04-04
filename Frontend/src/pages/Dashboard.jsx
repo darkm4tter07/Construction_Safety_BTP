@@ -28,7 +28,7 @@ export default function Dashboard() {
   }, [searchParams, login, navigate]);
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-black text-white overflow-hidden">
+    <div className="w-screen h-screen flex flex-col bg-black text-white overflow-y-auto">
 
       {/* Header */}
       <div className="h-[8vh] shrink-0">
