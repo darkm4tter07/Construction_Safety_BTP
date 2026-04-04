@@ -58,6 +58,7 @@ export function useFrameSender() {
 
           const reader = new FileReader();
           reader.onloadend = () => {
+            if (!cameraStore.isStreaming) return;
             wsStore.send({
               type: "frame",
               frame: reader.result,

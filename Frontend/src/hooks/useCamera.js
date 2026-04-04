@@ -51,7 +51,9 @@ export function useCamera() {
       cameraStore.videoEl.srcObject = null;
     }
     cameraStore.setStreaming(false);
-    wsStore.clearFrames();
+    setTimeout(() => {
+      wsStore.clearFrames();
+    }, 300);
   };
 
   return {
