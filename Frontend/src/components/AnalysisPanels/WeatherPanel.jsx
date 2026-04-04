@@ -1,7 +1,12 @@
 import { useWeather } from "../../hooks/useWeather";
+import { useEffect } from "react";
 
 export default function WeatherPanel() {
   const { data, loading, error } = useWeather();
+
+  useEffect(() => {
+    if (data) window.__weatherData = data;
+  }, [data]);
 
   return (
     <div className="w-[320px] lg:w-[350px] bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">

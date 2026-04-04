@@ -129,7 +129,9 @@ export default function AlertPanel({ lastResult, weather, fitness }) {
       
       if (isDuplicate) return prev;
       
-      return [newAlert, ...prev].slice(0, 10);
+      const updated = [newAlert, ...prev].slice(0, 10);
+      window.__alertsData = updated; // add this line
+      return updated;
     });
   }
 

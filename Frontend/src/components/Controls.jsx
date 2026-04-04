@@ -1,11 +1,18 @@
-import { Camera, Video, Download } from "lucide-react";
+import { useState } from "react";
+import { Camera, Video, Download, Loader2 } from "lucide-react";
 import { useCamera } from "../hooks/useCamera";
 import { useWebSocket } from "../hooks/useWebSocket";
+import { wsStore } from "../store/wsStore";
+import { exportDashboardPDF } from "../utils/exportPDF";
+import axios from "axios";
+import { AUTH_URL as API_URL } from "../Constant";
+import { getDetectionCounts } from "../utils/detectionUtils";
 
 export default function Controls() {
   const { wsState, clearFrames } = useWebSocket();
   const { startCamera, stopCamera, isStreaming } = useCamera();
-
+  const [exporting, setExporting] = useState(false);
+  
   const handleStart = async () => {
     try {
       await startCamera();
@@ -20,11 +27,28 @@ export default function Controls() {
     clearFrames();
   };
 
-  const handleExport = () => {
-    // TODO: Implement dashboard data export
-    console.log("Export triggered");
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const response = await axios.get(`${API_URL}/fitness/connected-workers`);
+      const workers = response.data.workers || [];
+      const weather = window.__weatherData || null;
+      const alerts = window.__alertsData || [];
+      const detections = wsStore.lastResult?.detections ?? [];
+      const counts = getDetectionCounts(detections);
+      const compliance = counts.personCount > 0
+        ? Math.round(((counts.hardhatCount + counts.maskCount + counts.vestCount) / (counts.personCount * 3)) * 100)
+        : null;
+      const ppeData = { ...counts, compliance };
+      exportDashboardPDF({ workers, weather, alerts, ppeData });
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
+    }
   };
-
   return (
     <div className="h-full px-6 flex items-center justify-between border-t border-zinc-800 bg-zinc-900">
 
@@ -81,19 +105,15 @@ export default function Controls() {
       {/* Right: Export button */}
       <button
         onClick={handleExport}
-        className="
-          flex items-center gap-2
-          px-4 py-2
-          bg-zinc-200 text-zinc-900
-          text-sm font-medium
-          rounded
-          hover:bg-white
-          transition
-          focus:outline-none focus:ring-0
-        "
+        disabled={exporting}
+        className="flex items-center gap-2 px-4 py-2 bg-zinc-200 text-zinc-900 text-sm font-medium rounded hover:bg-white transition focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <Download className="w-4 h-4" />
-        Export Data
+        {exporting ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Download className="w-4 h-4" />
+        )}
+        {exporting ? 'Exporting...' : 'Export Data'}
       </button>
 
     </div>

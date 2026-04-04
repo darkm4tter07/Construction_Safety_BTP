@@ -88,5 +88,9 @@ export function useWeather() {
     };
   }, []);
 
+  useEffect(() => {
+    if (data) window.__weatherData = data;
+  }, [data]);
+
   return { data, loading, error };
 }
