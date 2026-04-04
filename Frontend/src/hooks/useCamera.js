@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cameraStore } from "../store/cameraStore";
+import { wsStore } from "../store/wsStore";
 
 export function useCamera() {
   const [isStreaming, setIsStreaming] = useState(cameraStore.isStreaming);
@@ -50,6 +51,7 @@ export function useCamera() {
       cameraStore.videoEl.srcObject = null;
     }
     cameraStore.setStreaming(false);
+    wsStore.clearFrames();
   };
 
   return {
