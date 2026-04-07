@@ -3,7 +3,11 @@ const WS_URL = "ws://localhost:8000/ws";
 
 export const wsStore = {
   socket: null,
-  
+
+  //Initial States
+  cctvStatus: null,
+  streamSource: null, // "camera" | "cctv" | null
+
   // Global states
   wsState: "closed",
   fps: 0,
@@ -13,15 +17,22 @@ export const wsStore = {
   
   // Subscribers
   subs: new Set(),
+
+  setStreamSource(source) {
+    this.streamSource = source;
+    this.notify();
+  },
   
   // Notify all subscribers
   notify() {
     const snap = {
-      wsState: this.wsState,
-      fps: this.fps,
-      frames: { ...this.frames },
-      lastResult: this.lastResult ? { ...this.lastResult } : null,
-    };
+    wsState: this.wsState,
+    fps: this.fps,
+    frames: { ...this.frames },
+    lastResult: this.lastResult ? { ...this.lastResult } : null,
+    cctvStatus: this.cctvStatus, 
+    streamSource: this.streamSource
+  };
     this.subs.forEach((cb) => {
       try {
         cb(snap);
@@ -40,6 +51,8 @@ export const wsStore = {
       fps: this.fps,
       frames: { ...this.frames },
       lastResult: this.lastResult ? { ...this.lastResult } : null,
+      cctvStatus: this.cctvStatus,
+      streamSource: this.streamSource
     });
     return () => this.subs.delete(cb);
   },
@@ -89,6 +102,7 @@ export const wsStore = {
       if (msg.type === "result") {
         // Decrement pending frames
         this.pendingFrames = Math.max(0, this.pendingFrames - 1);
+        this.streamSource = msg.source ?? this.streamSource;
         
         // Update frames (don't overwrite with null/undefined)
         this.frames = {
@@ -105,7 +119,11 @@ export const wsStore = {
         this.fps = msg.fps ?? this.fps;
         this.notify();
         
-      } else if (msg.type === "error") {
+      }else if(msg.type === "cctv_status"){
+        console.log("[wsStore] CCTV status:", msg.status);
+        this.cctvStatus = msg.status; // "started" | "stopped" | "already_running"
+        this.notify();
+      }else if (msg.type === "error") {
         console.warn("[wsStore] Backend error:", msg.message);
       }
     };
@@ -134,6 +152,8 @@ export const wsStore = {
     this.lastResult = null;
     this.fps = 0;
     this.pendingFrames = 0;
+    this.cctvStatus = null; // also clear CCTV status
+    this.streamSource = null; // also clear stream source
     this.notify();
   },
   

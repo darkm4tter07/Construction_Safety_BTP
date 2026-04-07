@@ -6,6 +6,7 @@ import { AUTH_URL as API_URL } from "../../Constant";
 export default function FitnessPanel() {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,9 +16,7 @@ export default function FitnessPanel() {
   const fetchWorkers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `${API_URL}/fitness/connected-workers`
-      );
+      const response = await axios.get(`${API_URL}/fitness/connected-workers`);
       setWorkers(response.data.workers || []);
     } catch (error) {
       console.error("Failed to fetch workers:", error);
@@ -25,6 +24,9 @@ export default function FitnessPanel() {
       setLoading(false);
     }
   };
+
+  // derive directly from workers (single source of truth)
+  const expiredWorkers = workers.filter(w => w.needs_reauth);
 
   return (
     <div className="w-[320px] lg:w-[350px] shrink-0 h-full bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden flex flex-col">
@@ -43,7 +45,7 @@ export default function FitnessPanel() {
         </div>
         <button
           onClick={fetchWorkers}
-          className="text-[11px] cursor-pointer text-zinc-400 hover:text-white transition-colors duration-200"
+          className="text-[11px] cursor-pointer text-zinc-400 hover:text-white"
         >
           Refresh
         </button>
@@ -54,10 +56,7 @@ export default function FitnessPanel() {
 
         {loading && (
           <div className="flex items-center justify-center h-full">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-4 h-4 border border-zinc-500 border-t-zinc-200 rounded-full animate-spin" />
-              <span className="text-xs text-zinc-400">loading</span>
-            </div>
+            <span className="text-xs text-zinc-400">Loading...</span>
           </div>
         )}
 
@@ -75,7 +74,7 @@ export default function FitnessPanel() {
               <button
                 key={worker.id}
                 onClick={() => navigate(`/admin/worker/${worker.id}`)}
-                className="cursor-pointer w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-700/50 active:bg-zinc-700/70 transition-colors duration-150 group text-left"
+                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-700/50 text-left"
               >
                 {/* Avatar */}
                 <div className="relative shrink-0">
@@ -86,17 +85,22 @@ export default function FitnessPanel() {
                       className="w-8 h-8 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-300 font-medium">
+                    <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs">
                       {worker.full_name?.charAt(0)}
                     </div>
                   )}
-                  {/* Online dot */}
-                  <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full border border-zinc-800" />
+
+                  {/* Status dot */}
+                  <span
+                    className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-zinc-800 ${
+                      worker.needs_reauth ? "bg-yellow-500" : "bg-green-500"
+                    }`}
+                  />
                 </div>
 
-                {/* Name + metrics */}
+                {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">
+                  <div className="text-sm font-medium text-zinc-200 truncate">
                     {worker.full_name}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -107,16 +111,6 @@ export default function FitnessPanel() {
                     <Metric value={worker.calories ?? 0} label="kcal" />
                   </div>
                 </div>
-
-                {/* Arrow */}
-                <svg
-                  className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 transition-all duration-200 group-hover:translate-x-0.5 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
               </button>
             ))}
           </div>
@@ -124,11 +118,19 @@ export default function FitnessPanel() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2 border-t border-zinc-700 flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-        <span className="text-[10px] text-zinc-400">
-          {workers.length} connected via Google Fit
-        </span>
+      <div className="px-4 py-2 border-t border-zinc-700 flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+          <span className="text-[10px] text-zinc-400">
+            {workers.length} connected via Google Fit
+          </span>
+        </div>
+
+        {expiredWorkers.length > 0 && (
+          <div className="text-[10px] text-yellow-400">
+            ⚠️ {expiredWorkers.length} worker(s) need re-login
+          </div>
+        )}
       </div>
     </div>
   );

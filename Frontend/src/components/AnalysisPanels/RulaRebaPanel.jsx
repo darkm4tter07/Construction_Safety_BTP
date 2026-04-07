@@ -3,8 +3,8 @@ import { useWebSocket } from "../../hooks/useWebSocket";
 import { riskColor } from "../../utils/riskUtils";
 
 export default function RulaRebaPanel() {
-  const { lastResult } = useWebSocket();
-  const { isStreaming } = useCamera();
+  const { lastResult, isAnyStreamActive } = useWebSocket();
+  
   const posture = lastResult?.posture;
 
   const ScoreBar = ({ label, score, max, riskLevel }) => {
@@ -46,20 +46,20 @@ export default function RulaRebaPanel() {
         <span className="text-xs font-semibold tracking-widest text-zinc-300 uppercase">
           Ergonomic Analysis
         </span>
-        {!isStreaming && (
-          <span className="text-[10px] text-red-400/70 tracking-wide">camera off</span>
+        {!isAnyStreamActive && (
+          <span className="text-[10px] text-red-400/70 tracking-wide">Stream inactive</span>
         )}
-        {isStreaming && posture && (
-          <span className="text-[10px] text-green-400 tracking-wide">pose detected</span>
+        {isAnyStreamActive && posture && (
+          <span className="text-[10px] text-green-400 tracking-wide">Pose detected</span>
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {!isStreaming ? (
+        {!isAnyStreamActive ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-xs text-zinc-400 text-center px-6">
-              Ergonomic analysis will appear once the camera is active
+              Ergonomic analysis will appear once the camera/stream is active
             </p>
           </div>
         ) : !posture ? (
@@ -97,9 +97,9 @@ export default function RulaRebaPanel() {
 
       {/* Footer */}
       <div className="px-4 py-2 border-t border-zinc-700 flex items-center gap-1.5 shrink-0">
-        <span className={`w-1.5 h-1.5 rounded-full ${isStreaming && posture ? "bg-green-500" : "bg-zinc-600"}`} />
+        <span className={`w-1.5 h-1.5 rounded-full ${isAnyStreamActive && posture ? "bg-green-500" : "bg-zinc-600"}`} />
         <span className="text-[10px] text-zinc-400">
-          {isStreaming && posture ? "Analyzing posture" : "Awaiting pose data"}
+          {isAnyStreamActive && posture ? "Analyzing posture" : "Awaiting pose data"}
         </span>
       </div>
     </div>

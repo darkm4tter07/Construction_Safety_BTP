@@ -4,8 +4,7 @@ import { Users } from "lucide-react";
 import { getDetectionCounts, CLASS_IDS } from "../../utils/detectionUtils";
 
 export default function PPEPanel() {
-  const { lastResult } = useWebSocket();
-  const { isStreaming } = useCamera();
+  const { lastResult, isAnyStreamActive } = useWebSocket();
 
   const detections = lastResult?.detections ?? [];
   const counts = getDetectionCounts(detections);
@@ -59,12 +58,12 @@ export default function PPEPanel() {
         <span className="text-xs font-semibold tracking-widest text-zinc-300 uppercase">
           PPE Compliance
         </span>
-        {!isStreaming && (
+        {!isAnyStreamActive && (
           <span className="text-[10px] text-red-400/70 tracking-wide">
-            camera off
+            Stream Inactive
           </span>
         )}
-        {isStreaming && counts.personCount > 0 && (
+        {isAnyStreamActive && counts.personCount > 0 && (
           <span className={`text-[10px] font-semibold tracking-wide ${
             compliance === 100 ? "text-green-400" : compliance >= 60 ? "text-yellow-400" : "text-red-400"
           }`}>
@@ -75,10 +74,10 @@ export default function PPEPanel() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {!isStreaming ? (
+        {!isAnyStreamActive ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-xs text-zinc-400 text-center px-6">
-              PPE status will appear once the camera is active
+              PPE status will appear once the camera/stream is active
             </p>
           </div>
         ) : (
@@ -127,9 +126,9 @@ export default function PPEPanel() {
 
       {/* Footer */}
       <div className="px-4 py-2 border-t border-zinc-700 flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? "bg-green-500" : "bg-zinc-600"}`} />
+        <span className={`w-1.5 h-1.5 rounded-full ${isAnyStreamActive ? "bg-green-500" : "bg-zinc-600"}`} />
         <span className="text-[10px] text-zinc-400">
-          {isStreaming ? `${detections.length} objects in frame` : "stream inactive"}
+          {isAnyStreamActive ? `${detections.length} objects in frame` : "Stream Inactive"}
         </span>
       </div>
     </div>

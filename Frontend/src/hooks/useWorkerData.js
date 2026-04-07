@@ -7,10 +7,10 @@ export const useWorkerData = (user, id, isAdminView) => {
   const [fitnessConnected, setFitnessConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileUser, setProfileUser] = useState(null);
+  const [needsReauth, setNeedsReauth] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    
     const loadProfile = async () => {
       try {
         if (isAdminView) {
@@ -23,13 +23,12 @@ export const useWorkerData = (user, id, isAdminView) => {
         console.error('Failed to load profile:', err);
       }
     };
-    
     loadProfile();
   }, [user, id, isAdminView]);
 
   useEffect(() => {
     if (!user) return;
-    
+
     const checkFitnessConnection = async () => {
       try {
         const response = await axios.get(`${API_URL}/auth/google/status`);
@@ -60,8 +59,12 @@ export const useWorkerData = (user, id, isAdminView) => {
         : `${API_URL}/fitness/summary`;
       const response = await axios.get(url);
       setFitnessData(response.data);
+      setNeedsReauth(false);
     } catch (error) {
       console.error('Failed to fetch fitness data:', error);
+      if (error?.response?.status === 401) {
+        setNeedsReauth(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -87,13 +90,28 @@ export const useWorkerData = (user, id, isAdminView) => {
     }
   };
 
+  const handleAdminDisconnect = async () => {
+    if (!window.confirm(`Disconnect Google Fit for ${profileUser?.full_name}?`)) return;
+    try {
+      await axios.delete(`${API_URL}/auth/google/disconnect`, {
+        headers: { Authorization: axios.defaults.headers.common['Authorization'] },
+        data: { user_id: id }
+      });
+      setFitnessData(null);
+    } catch (error) {
+      console.error('Failed to disconnect worker:', error);
+    }
+  };
+
   return {
     profileUser,
     fitnessData,
     fitnessConnected,
     loading,
+    needsReauth,
     fetchFitnessData,
     handleConnectFitness,
     handleDisconnect,
+    handleAdminDisconnect,
   };
 };

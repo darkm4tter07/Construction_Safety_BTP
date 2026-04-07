@@ -26,6 +26,8 @@ export function useWebSocket() {
     fps: state.fps,
     frames: state.frames,
     lastResult: state.lastResult,
+    streamSource: state.streamSource, 
+    isAnyStreamActive: !!state.streamSource,
     clearFrames: () => wsStore.clearFrames(),
   };
 }
