@@ -57,9 +57,15 @@ export const useWorkerData = (user, id, isAdminView) => {
       const url = isAdminView
         ? `${API_URL}/fitness/summary/${id}`
         : `${API_URL}/fitness/summary`;
+
       const response = await axios.get(url);
-      setFitnessData(response.data);
-      setNeedsReauth(false);
+      if (response.data?.needs_reauth) {
+        setNeedsReauth(true);
+        setFitnessData(null);
+      } else {
+        setFitnessData(response.data);
+        setNeedsReauth(false);
+      }
     } catch (error) {
       console.error('Failed to fetch fitness data:', error);
       if (error?.response?.status === 401) {
