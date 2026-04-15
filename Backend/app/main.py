@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.routes import  health, upload, websocket
+from app.routes import  health, upload, websocket, tracking
 
 app = FastAPI(title=settings.APP_NAME, version=settings.VERSION)
 
@@ -17,6 +17,7 @@ app.add_middleware(
 app.include_router(health.router, tags=["Health"])
 app.include_router(upload.router, tags=["Upload"])
 app.include_router(websocket.router, tags=["WebSocket"])
+app.include_router(tracking.router, tags=["Tracking"])
 
 @app.on_event("shutdown")
 async def shutdown_event():

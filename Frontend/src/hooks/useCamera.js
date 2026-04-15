@@ -6,8 +6,6 @@ export function useCamera() {
   const [isStreaming, setIsStreaming] = useState(cameraStore.isStreaming);
 
   useEffect(() => {
-    // Initialize video element reference
-    cameraStore.videoEl = document.getElementById("hidden-video");
     
     // Subscribe to camera state changes
     const unsubscribe = cameraStore.subscribe((streaming) => {

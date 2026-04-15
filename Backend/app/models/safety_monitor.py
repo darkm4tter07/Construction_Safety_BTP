@@ -1,9 +1,11 @@
 import cv2
+import traceback
 from .yolo_detector import YOLODetector
 from .pose_detector import PoseDetector
 from .ergonomic_analyzer import ErgonomicAnalyzer
 from app.utils.drawing_utils import draw_detections
 from app.utils.fps_counter import FPSCounter
+from app.services.worker_tracking_service import worker_tracking_service
 
 class SafetyMonitor:
     def __init__(self, yolo_model_path):
@@ -32,10 +34,21 @@ class SafetyMonitor:
         # 1. YOLO OBJECT FRAME
         # ---------------------
         detections = self.yolo.detect(frame_resized.copy())
-        object_frame = draw_detections(frame_resized.copy(), detections, self.yolo.model.names)
 
         # ---------------------
-        # 2. POSE FRAME
+        # 2. TRACKING UPDATE
+        # ---------------------
+        tracking_result = worker_tracking_service.update_tracks(detections)
+
+        object_frame = draw_detections(
+            frame_resized.copy(),
+            detections,
+            self.yolo.model.names,
+            track_mappings=tracking_result["active_tracks"]
+        )
+
+        # ---------------------
+        # 3. POSE FRAME
         # ---------------------
         try:
             # Create a fresh copy for pose detection
@@ -93,7 +106,7 @@ class SafetyMonitor:
             )
 
         # ---------------------
-        # 3. ERGONOMIC ANALYSIS
+        # 4. ERGONOMIC ANALYSIS
         # ---------------------
         posture_results = None
         if landmarks:
@@ -103,7 +116,7 @@ class SafetyMonitor:
                 print(f"⚠️ Error in ergonomic analysis: {e}")
 
         # ---------------------
-        # 4. FPS
+        # 5. FPS
         # ---------------------
         fps = self.fps_counter.update()
 
@@ -112,7 +125,8 @@ class SafetyMonitor:
             "pose_frame": pose_frame,
             "detections": detections,
             "posture": posture_results,
-            "fps": fps
+            "fps": fps,
+            "tracking": tracking_result
         }
 
     def process_video_stream(self, video_path):
@@ -135,3 +149,4 @@ class SafetyMonitor:
     def cleanup(self):
         print("🧹 Cleaning up SafetyMonitor...")
         self.pose_detector.cleanup()
+        worker_tracking_service.reset()

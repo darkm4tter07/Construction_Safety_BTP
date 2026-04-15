@@ -4,6 +4,7 @@ import traceback, time, asyncio
 from app.services.websocket_manager import ConnectionManager
 from app.services.cctv_service import start_cctv, stop_cctv, cleanup_cctv
 from app.models import safety_monitor
+from app.services.worker_tracking_service import worker_tracking_service
 
 router = APIRouter()
 manager = ConnectionManager()
@@ -41,6 +42,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     _, buf1 = cv2.imencode(".jpg", result["object_frame"], [cv2.IMWRITE_JPEG_QUALITY, 60])
                     _, buf2 = cv2.imencode(".jpg", result["pose_frame"], [cv2.IMWRITE_JPEG_QUALITY, 60])
 
+                    tracking = result["tracking"]
+
                     await manager.send_json({
                         "type": "result",
                         "frame_object": f"data:image/jpeg;base64,{base64.b64encode(buf1).decode()}",
@@ -49,10 +52,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         "posture": result["posture"],
                         "fps": result["fps"],
                         "source": "webcam",
+                        # --- tracking ---
+                        "active_tracks": tracking["active_tracks"],
+                        "new_untracked": tracking["new_untracked"],
+                        "lost_workers": tracking["lost_workers"],
                     }, websocket)
 
                 except Exception as e:
                     print(f"❌ Frame error: {e}")
+                    traceback.print_exc()
                     await manager.send_json({"type": "error", "message": str(e)}, websocket)
 
             # 2. START CCTV
@@ -71,6 +79,11 @@ async def websocket_endpoint(websocket: WebSocket):
             # 4. PING
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
+
+            # 5. RESET TRACKING — admin can reset all assignments manually
+            elif msg_type == "reset_tracking":
+                worker_tracking_service.reset()
+                await manager.send_json({"type": "tracking_reset", "status": "ok"}, websocket)
 
     except WebSocketDisconnect:
         stop_cctv(client_id)

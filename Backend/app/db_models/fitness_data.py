@@ -30,7 +30,7 @@ class FitnessData(Base):
     sync_timestamp = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationship to User
-    user = relationship("User", backref="fitness_data")
+    user = relationship("User", back_populates="fitness_data")
     
     # Ensure one record per user per day
     __table_args__ = (

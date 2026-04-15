@@ -4,6 +4,12 @@ export const cameraStore = {
   isStreaming: false,
   listeners: new Set(),
 
+  init() {
+    // Call once at app start — DOM is ready by then
+    this.videoEl = document.getElementById("hidden-video");
+    console.log("[cameraStore] videoEl:", this.videoEl);
+  },
+
   setStreaming(val) {
     this.isStreaming = val;
     this.listeners.forEach((fn) => fn(val));

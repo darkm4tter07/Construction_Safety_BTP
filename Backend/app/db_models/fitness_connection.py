@@ -23,4 +23,4 @@ class FitnessConnection(Base):
     is_active = Column(Boolean, default=True)
     
     # Relationship to User
-    user = relationship("User", backref="fitness_connection")
+    user = relationship("User", back_populates="fitness_connection")

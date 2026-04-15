@@ -4,21 +4,33 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import WorkerProfile from './pages/WorkerProfile';
 import Dashboard from './pages/Dashboard';
-import {useFrameSender} from './hooks/useFrameSender';
+import { useFrameSender } from './hooks/useFrameSender';
+import { Toaster } from 'react-hot-toast';
 import './App.css';
 
 function App() {
   const { isAuthenticated, user } = useAuth();
   useFrameSender();
+
   return (
     <Router>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "#27272a",
+            color: "#fff",
+            border: "1px solid #3f3f46",
+            fontSize: "12px",
+          },
+        }}
+      />
       <Routes>
-        {/* Login Route */}
         <Route path="/login" element={<Login />} />
 
-        {/* Worker Self Profile */}
+        {/* Worker profile — nested routes */}
         <Route
-          path="/worker/profile"
+          path="/worker/profile/*"
           element={
             <ProtectedRoute requiredRole="WORKER">
               <WorkerProfile />
@@ -26,9 +38,9 @@ function App() {
           }
         />
 
-        {/* Admin Viewing Any Worker */}
+        {/* Admin viewing worker profile — nested routes */}
         <Route
-          path="/admin/worker/:id"
+          path="/admin/worker/:id/*"
           element={
             <ProtectedRoute requiredRole="ADMIN">
               <WorkerProfile />
@@ -36,9 +48,6 @@ function App() {
           }
         />
 
-
-
-        {/* Admin Dashboard */}
         <Route
           path="/admin/dashboard"
           element={
@@ -48,7 +57,6 @@ function App() {
           }
         />
 
-        {/* Default redirect based on role */}
         <Route
           path="/"
           element={
@@ -64,7 +72,6 @@ function App() {
           }
         />
 
-        {/* Catch all - redirect to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

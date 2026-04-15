@@ -7,13 +7,17 @@ export function useWebSocket() {
     fps: wsStore.fps,
     frames: wsStore.frames,
     lastResult: wsStore.lastResult,
+    cctvStatus: wsStore.cctvStatus,
+    streamSource: wsStore.streamSource,
+    lastError: wsStore.lastError,
+    activeTracks: wsStore.activeTracks,
+    newUntracked: wsStore.newUntracked,
+    lostWorkers: wsStore.lostWorkers,
   });
 
   useEffect(() => {
-    // Ensure WebSocket is connected
     wsStore.ensureSocket();
 
-    // Subscribe to store updates
     const unsubscribe = wsStore.subscribe((snapshot) => {
       setState(snapshot);
     });
@@ -26,8 +30,13 @@ export function useWebSocket() {
     fps: state.fps,
     frames: state.frames,
     lastResult: state.lastResult,
-    streamSource: state.streamSource, 
+    streamSource: state.streamSource,
     isAnyStreamActive: !!state.streamSource,
+    lastError: state.lastError,
     clearFrames: () => wsStore.clearFrames(),
+    // tracking
+    activeTracks: state.activeTracks,
+    newUntracked: state.newUntracked,
+    lostWorkers: state.lostWorkers,
   };
 }

@@ -1,6 +1,7 @@
 import cv2, base64, numpy as np
 import asyncio, threading, time, traceback
 from app.models import safety_monitor
+from app.services.worker_tracking_service import worker_tracking_service
 
 cctv_active = {}
 cctv_threads = {}
@@ -35,6 +36,8 @@ def cctv_stream_thread(client_id: int, video_path: str, websocket, manager, loop
             _, buf2 = cv2.imencode(".jpg", result["pose_frame"], [cv2.IMWRITE_JPEG_QUALITY, 60])
             frame_pose_b64 = base64.b64encode(buf2).decode("utf-8")
 
+            tracking = result["tracking"]
+
             asyncio.run_coroutine_threadsafe(
                 manager.send_json(
                     {
@@ -45,6 +48,10 @@ def cctv_stream_thread(client_id: int, video_path: str, websocket, manager, loop
                         "posture": result["posture"],
                         "fps": result["fps"],
                         "source": "cctv",
+                        # --- tracking ---
+                        "active_tracks": tracking["active_tracks"],
+                        "new_untracked": tracking["new_untracked"],
+                        "lost_workers": tracking["lost_workers"],
                     },
                     websocket,
                 ),
@@ -60,7 +67,7 @@ def cctv_stream_thread(client_id: int, video_path: str, websocket, manager, loop
 
 def start_cctv(client_id, video_path, websocket, manager, loop):
     if cctv_active.get(client_id, False):
-        return False  # already running
+        return False
     cctv_active[client_id] = True
     thread = threading.Thread(
         target=cctv_stream_thread,

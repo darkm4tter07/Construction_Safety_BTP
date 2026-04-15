@@ -1,4 +1,3 @@
-// Global WebSocket manager: single socket, single source-of-truth state
 const WS_URL = "ws://localhost:8000/ws";
 
 export const wsStore = {
@@ -6,7 +5,7 @@ export const wsStore = {
 
   //Initial States
   cctvStatus: null,
-  streamSource: null, // "camera" | "cctv" | null
+  streamSource: null,
 
   // Global states
   wsState: "closed",
@@ -14,7 +13,13 @@ export const wsStore = {
   frames: { object: null, pose: null },
   lastResult: null,
   pendingFrames: 0,
-  
+  lastError: null,
+
+  // Tracking state
+  activeTracks: {},
+  newUntracked: [],
+  lostWorkers: [],
+
   // Subscribers
   subs: new Set(),
 
@@ -22,17 +27,21 @@ export const wsStore = {
     this.streamSource = source;
     this.notify();
   },
-  
-  // Notify all subscribers
+
   notify() {
     const snap = {
-    wsState: this.wsState,
-    fps: this.fps,
-    frames: { ...this.frames },
-    lastResult: this.lastResult ? { ...this.lastResult } : null,
-    cctvStatus: this.cctvStatus, 
-    streamSource: this.streamSource
-  };
+      wsState: this.wsState,
+      fps: this.fps,
+      frames: { ...this.frames },
+      lastResult: this.lastResult ? { ...this.lastResult } : null,
+      cctvStatus: this.cctvStatus,
+      streamSource: this.streamSource,
+      lastError: this.lastError,
+      // tracking
+      activeTracks: this.activeTracks,
+      newUntracked: this.newUntracked,
+      lostWorkers: this.lostWorkers,
+    };
     this.subs.forEach((cb) => {
       try {
         cb(snap);
@@ -41,26 +50,28 @@ export const wsStore = {
       }
     });
   },
-  
-  // Subscribe to state changes
+
   subscribe(cb) {
     this.subs.add(cb);
-    // Immediately send current state
     cb({
       wsState: this.wsState,
       fps: this.fps,
       frames: { ...this.frames },
       lastResult: this.lastResult ? { ...this.lastResult } : null,
       cctvStatus: this.cctvStatus,
-      streamSource: this.streamSource
+      streamSource: this.streamSource,
+      lastError: this.lastError,
+      // tracking
+      activeTracks: this.activeTracks,
+      newUntracked: this.newUntracked,
+      lostWorkers: this.lostWorkers,
     });
     return () => this.subs.delete(cb);
   },
-  
-  // Ensure WebSocket connection exists
+
   ensureSocket() {
     if (this.socket) return;
-    
+
     try {
       this.socket = new WebSocket(WS_URL);
     } catch (e) {
@@ -69,27 +80,27 @@ export const wsStore = {
       this.notify();
       return;
     }
-    
+
     this.socket.onopen = () => {
       console.log("[wsStore] ✅ Connected");
       this.wsState = "open";
       this.pendingFrames = 0;
       this.notify();
     };
-    
+
     this.socket.onclose = () => {
       console.log("[wsStore] ❌ Disconnected");
       this.wsState = "closed";
       this.socket = null;
       this.notify();
     };
-    
+
     this.socket.onerror = (err) => {
       console.warn("[wsStore] ⚠️ Socket error", err);
       this.wsState = "error";
       this.notify();
     };
-    
+
     this.socket.onmessage = (e) => {
       let msg;
       try {
@@ -98,43 +109,53 @@ export const wsStore = {
         console.warn("[wsStore] Non-JSON message", err);
         return;
       }
-      
+
       if (msg.type === "result") {
-        // Decrement pending frames
         this.pendingFrames = Math.max(0, this.pendingFrames - 1);
         this.streamSource = msg.source ?? this.streamSource;
-        
-        // Update frames (don't overwrite with null/undefined)
+
         this.frames = {
           object: msg.frame_object ?? this.frames.object,
           pose: msg.frame_pose ?? this.frames.pose,
         };
-        
-        // Update last result
+
         this.lastResult = {
           detections: msg.detections ?? this.lastResult?.detections ?? null,
           posture: msg.posture ?? this.lastResult?.posture ?? null,
         };
-        
+
         this.fps = msg.fps ?? this.fps;
+
+        // --- tracking ---
+        this.activeTracks = msg.active_tracks ?? this.activeTracks;
+        this.newUntracked = msg.new_untracked ?? [];
+        this.lostWorkers = msg.lost_workers ?? [];
+
         this.notify();
-        
-      }else if(msg.type === "cctv_status"){
+
+      } else if (msg.type === "cctv_status") {
         console.log("[wsStore] CCTV status:", msg.status);
-        this.cctvStatus = msg.status; // "started" | "stopped" | "already_running"
+        this.cctvStatus = msg.status;
         this.notify();
-      }else if (msg.type === "error") {
+
+      } else if (msg.type === "tracking_reset") {
+        this.activeTracks = {};
+        this.newUntracked = [];
+        this.lostWorkers = [];
+        this.notify();
+
+      } else if (msg.type === "error") {
         console.warn("[wsStore] Backend error:", msg.message);
+        this.lastError = msg.message;
+        this.notify();
       }
     };
   },
-  
-  // Send data through WebSocket
+
   send(payload) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return false;
     }
-    
     try {
       this.socket.send(JSON.stringify(payload));
       this.pendingFrames += 1;
@@ -144,20 +165,23 @@ export const wsStore = {
       return false;
     }
   },
-  
-  // Clear all frames and results
+
   clearFrames() {
     console.log("[wsStore] 🧹 Clearing frames");
     this.frames = { object: null, pose: null };
     this.lastResult = null;
     this.fps = 0;
     this.pendingFrames = 0;
-    this.cctvStatus = null; // also clear CCTV status
-    this.streamSource = null; // also clear stream source
+    this.cctvStatus = null;
+    this.streamSource = null;
+    this.lastError = null;
+    // reset tracking too
+    this.activeTracks = {};
+    this.newUntracked = [];
+    this.lostWorkers = [];
     this.notify();
   },
-  
-  // Close WebSocket connection
+
   close() {
     if (this.socket) {
       this.socket.close();
@@ -165,5 +189,5 @@ export const wsStore = {
     }
     this.wsState = "closed";
     this.notify();
-  }
+  },
 };
