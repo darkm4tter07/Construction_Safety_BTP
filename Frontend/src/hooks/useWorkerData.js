@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AUTH_URL as API_URL } from '../Constant';
 import { supabase, uploadProfilePhotoToStorage } from '../utils/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useWorkerData = (user, id, isAdminView) => {
   const [fitnessData, setFitnessData] = useState(null);
@@ -13,19 +14,23 @@ export const useWorkerData = (user, id, isAdminView) => {
   const [needsReauth, setNeedsReauth] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const { setUser } = useAuth();
 
   const targetId = isAdminView ? id : user?.id;
 
-  // ------------------------------------------------------------------
-  // Load user + profile
-  // ------------------------------------------------------------------
   const loadProfile = useCallback(async () => {
     if (!user || !targetId) return;
+    if(!isAdminView) {
+      setProfileUser(user);
+      setWorkerProfile(user.profile);
+      return;
+    }
     try {
       const res = await axios.get(`${API_URL}/profile/${targetId}`);
       setProfileUser(res.data);
       setWorkerProfile(res.data.profile);
     } catch (err) {
+      toast.error('Failed to load profile');
       console.error('Failed to load profile:', err);
       if (!isAdminView) setProfileUser(user);
     }
@@ -35,9 +40,6 @@ export const useWorkerData = (user, id, isAdminView) => {
     loadProfile();
   }, [loadProfile]);
 
-  // ------------------------------------------------------------------
-  // Fitness connection check
-  // ------------------------------------------------------------------
   useEffect(() => {
     if (!user) return;
     const checkFitnessConnection = async () => {
@@ -54,7 +56,6 @@ export const useWorkerData = (user, id, isAdminView) => {
         setLoading(false);
       }
     };
-
     if (isAdminView) {
       fetchFitnessData();
     } else {
@@ -62,9 +63,6 @@ export const useWorkerData = (user, id, isAdminView) => {
     }
   }, [user, id, isAdminView]);
 
-  // ------------------------------------------------------------------
-  // Fetch fitness data
-  // ------------------------------------------------------------------
   const fetchFitnessData = async () => {
     setLoading(true);
     try {
@@ -90,14 +88,15 @@ export const useWorkerData = (user, id, isAdminView) => {
     }
   };
 
-  // ------------------------------------------------------------------
-  // Update profile
-  // ------------------------------------------------------------------
   const updateProfile = async (data) => {
     setProfileLoading(true);
     try {
       const res = await axios.put(`${API_URL}/profile/${targetId}`, data);
       setWorkerProfile(res.data);
+      setUser(prev => ({
+        ...prev,
+        profile: res.data,
+      }));
       toast.success('Profile updated');
       return { success: true };
     } catch (err) {
@@ -108,9 +107,6 @@ export const useWorkerData = (user, id, isAdminView) => {
     }
   };
 
-  // ------------------------------------------------------------------
-  // Upload profile photo to Supabase
-  // ------------------------------------------------------------------
   const uploadProfilePhoto = async (file) => {
     setPhotoUploading(true);
     try {
@@ -121,6 +117,14 @@ export const useWorkerData = (user, id, isAdminView) => {
       setWorkerProfile(prev => ({
         ...prev,
         profile_photo_url: publicUrl,
+      }));
+
+      setUser(prev => ({
+        ...prev,
+        profile: {
+          ...prev.profile,
+          profile_photo_url: publicUrl,
+        },
       }));
 
       toast.success('Photo updated');
@@ -134,9 +138,7 @@ export const useWorkerData = (user, id, isAdminView) => {
       setPhotoUploading(false);
     }
   };
-  // ------------------------------------------------------------------
-  // Fitness connect / disconnect
-  // ------------------------------------------------------------------
+
   const handleConnectFitness = async () => {
     try {
       const response = await axios.get(`${API_URL}/auth/google/login`);
@@ -169,9 +171,6 @@ export const useWorkerData = (user, id, isAdminView) => {
     }
   };
 
-  // ------------------------------------------------------------------
-  // BMI calculation
-  // ------------------------------------------------------------------
   const getBMI = () => {
     if (!workerProfile?.height_cm || !workerProfile?.weight_kg) return null;
     const heightM = workerProfile.height_cm / 100;
