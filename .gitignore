@@ -150,4 +150,5 @@ __pycache__/
 
 # Environment
 venv/
-*.env
+*.envvenv/
+.env

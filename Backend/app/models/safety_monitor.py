@@ -1,5 +1,6 @@
 import cv2
 import traceback
+import time
 from .yolo_detector import YOLODetector
 from .pose_detector import PoseDetector
 from .ergonomic_analyzer import ErgonomicAnalyzer
@@ -29,11 +30,12 @@ class SafetyMonitor:
         """
         # Resize for performance
         frame_resized = cv2.resize(frame, (640, 480))
-
+        t1 = time.time()
         # ---------------------
         # 1. YOLO OBJECT FRAME
         # ---------------------
         detections = self.yolo.detect(frame_resized.copy())
+        print(f"YOLO: {(time.time()-t1)*1000:.1f}ms")
 
         # ---------------------
         # 2. TRACKING UPDATE
@@ -46,6 +48,7 @@ class SafetyMonitor:
             self.yolo.model.names,
             track_mappings=tracking_result["active_tracks"]
         )
+        t2 = time.time()
 
         # ---------------------
         # 3. POSE FRAME
@@ -54,7 +57,7 @@ class SafetyMonitor:
             # Create a fresh copy for pose detection
             pose_input = frame_resized.copy()
             pose_landmarks, landmarks = self.pose_detector.detect(pose_input)
-            
+            print(f"MediaPipe: {(time.time()-t2)*1000:.1f}ms")
             # Start with original frame copy
             pose_frame = frame_resized.copy()
             
@@ -109,9 +112,11 @@ class SafetyMonitor:
         # 4. ERGONOMIC ANALYSIS
         # ---------------------
         posture_results = None
+        t3 = time.time()
         if landmarks:
             try:
                 posture_results = self.ergonomic.analyze_posture(landmarks)
+                print(f"Ergonomic Analysis: {(time.time()-t3)*1000:.1f}ms")
             except Exception as e:
                 print(f"⚠️ Error in ergonomic analysis: {e}")
 
@@ -119,6 +124,8 @@ class SafetyMonitor:
         # 5. FPS
         # ---------------------
         fps = self.fps_counter.update()
+
+        print(f"Total Frame Processing Time: {(time.time()-t1)*1000:.1f}ms | FPS: {fps:.1f}")
 
         return {
             "object_frame": object_frame,
