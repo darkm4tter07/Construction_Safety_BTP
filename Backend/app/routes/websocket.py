@@ -32,7 +32,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     last_process_time[client_id] = current_time
 
                     # ── start end-to-end timer ──
-                    t_start = time.time()
+                    # t_start = time.time()
 
                     frame_bytes = base64.b64decode(message["frame"].split(",")[1])
                     nparr = np.frombuffer(frame_bytes, np.uint8)
@@ -62,7 +62,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     }, websocket)
                     
                     # ── print end-to-end time ──
-                    print(f"⏱️ End-to-end: {(time.time()-t_start)*1000:.1f}ms")
+                    # print(f"⏱️ End-to-end: {(time.time()-t_start)*1000:.1f}ms")
 
                 except Exception as e:
                     print(f"❌ Frame error: {e}")
