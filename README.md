@@ -41,7 +41,8 @@ node --version        # v20+
 nvidia-smi            # lists your GPU and driver
 ```
 
-Without a GPU everything still runs, at roughly 2–4 FPS instead of 20–30.
+Without a GPU everything still runs, but each frame takes several hundred
+milliseconds instead of tens, and the stream visibly lags.
 
 ---
 
@@ -224,8 +225,13 @@ First backend start takes 20–60 s while YOLO and MediaPipe load. Look for
 2. `localhost:8000/health` → both models `true`
 3. Sign in at `localhost:5173` → lands on `/admin/dashboard` for an admin
 4. Click **Camera** → two live panels, boxes left, skeleton right
-5. FPS above 15 → the GPU is being used
+5. The backend logged `Using device: cuda` at startup → the GPU is being used
 6. **CCTV** with `app/uploads/test.mp4` → sample clip runs through detection
+
+The FPS readout tops out around **5 for the webcam** and **8–10 for CCTV** by
+design — the browser sends at most 5 frames a second and the backend discards
+frames arriving closer than 0.1 s apart. A low number there does not mean the GPU
+is idle.
 
 ---
 
@@ -240,7 +246,7 @@ First backend start takes 20–60 s while YOLO and MediaPipe load. Look for
 | Login redirects but nothing happens | Local frontend pointed at the hosted auth server. See step 5. |
 | CORS error in the console | Add the origin to `ALLOWED_ORIGINS` (backend) and `FRONTEND_URL` (auth server). |
 | Signed in but got the worker page | Your row is `role = WORKER`. Run the SQL above, then re-login. |
-| FPS is 2–5 | Running on CPU, or using `yolo11s.pt`. Switch `YOLO_MODEL_PATH` to `yolo11n.pt`. |
+| Video is laggy / FPS below 3 | Running on CPU, or using `yolo11s.pt`. Check `torch.cuda.is_available()`; switch `YOLO_MODEL_PATH` back to `yolo11n.pt`. |
 | Profile photo upload fails | Supabase bucket must be named `worker-profiles`, public, with anon insert/update/delete policies. |
 | Steps and heart rate always 0 | That Google account has no Google Fit data. Not a bug. |
 | Google login breaks after ~a week | The OAuth consent screen is in *Testing*, so refresh tokens expire in 7 days. Reconnect Google Fit. |
